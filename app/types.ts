@@ -14,4 +14,4 @@ export interface Player {
   buzzed: boolean;
 }
 
-export type GameState = 'setup' | 'playing' | 'buzzed' | 'answered' | 'finished';
+export type GameState = 'setup' | 'waiting' | 'playing' | 'buzzed' | 'answered' | 'finished';

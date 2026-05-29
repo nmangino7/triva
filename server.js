@@ -6,68 +6,52 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
 app.use(cors());
-app.use(express.json());
 
 let gameState = {
-  state: 'setup', // setup, playing, buzzed, answered, finished
+  state: 'waiting',
   players: [],
   currentQuestion: 0,
   buzzedPlayer: null,
   showAnswers: false,
 };
 
-let playerSessions = {};
-
 io.on('connection', (socket) => {
-  console.log(`Player connected: ${socket.id}`);
-
+  // Send current state to new connection
   socket.emit('game:state', gameState);
 
   socket.on('player:join', (playerName) => {
-    const newPlayer = {
-      id: socket.id,
-      name: playerName,
-      score: 0,
-      buzzed: false,
-    };
+    // Don't allow joining mid-game
+    if (gameState.state !== 'waiting') return;
 
-    gameState.players.push(newPlayer);
-    playerSessions[socket.id] = playerName;
-
-    console.log(`${playerName} joined. Total players: ${gameState.players.length}`);
+    // Prevent duplicate joins
+    const exists = gameState.players.find((p) => p.id === socket.id);
+    if (!exists) {
+      gameState.players.push({ id: socket.id, name: playerName, score: 0 });
+    }
     io.emit('game:state', gameState);
   });
 
-  socket.on('game:start', (playerNames) => {
+  socket.on('game:start', () => {
+    if (gameState.players.length < 1) return;
     gameState.state = 'playing';
-    gameState.players = playerNames.map((name, i) => ({
-      id: `player-${i}`,
-      name,
-      score: 0,
-      buzzed: false,
-    }));
     gameState.currentQuestion = 0;
     gameState.buzzedPlayer = null;
     gameState.showAnswers = false;
-
     io.emit('game:state', gameState);
   });
 
   socket.on('player:buzz', () => {
     if (gameState.state === 'playing' && !gameState.buzzedPlayer) {
-      const playerIndex = gameState.players.findIndex((p) => p.id === socket.id);
-      if (playerIndex !== -1) {
+      const player = gameState.players.find((p) => p.id === socket.id);
+      if (player) {
         gameState.buzzedPlayer = socket.id;
         gameState.state = 'buzzed';
         io.emit('game:state', gameState);
-        io.emit('game:buzz', gameState.players[playerIndex].name);
+        io.emit('game:buzz', player.name);
       }
     }
   });
@@ -78,11 +62,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('host:answerResult', (correct) => {
-    if (gameState.buzzedPlayer) {
-      const playerIndex = gameState.players.findIndex((p) => p.id === gameState.buzzedPlayer);
-      if (playerIndex !== -1 && correct) {
-        gameState.players[playerIndex].score += 10;
-      }
+    if (gameState.buzzedPlayer && correct) {
+      const idx = gameState.players.findIndex((p) => p.id === gameState.buzzedPlayer);
+      if (idx !== -1) gameState.players[idx].score += 10;
     }
     gameState.buzzedPlayer = null;
     gameState.showAnswers = false;
@@ -104,7 +86,7 @@ io.on('connection', (socket) => {
 
   socket.on('game:reset', () => {
     gameState = {
-      state: 'setup',
+      state: 'waiting',
       players: [],
       currentQuestion: 0,
       buzzedPlayer: null,
@@ -114,15 +96,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const playerName = playerSessions[socket.id];
-    delete playerSessions[socket.id];
     gameState.players = gameState.players.filter((p) => p.id !== socket.id);
-    console.log(`${playerName} disconnected. Remaining players: ${gameState.players.length}`);
+    if (gameState.buzzedPlayer === socket.id) {
+      gameState.buzzedPlayer = null;
+      gameState.state = 'playing';
+    }
     io.emit('game:state', gameState);
   });
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Socket.io server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Socket.io server running on port ${PORT}`));
