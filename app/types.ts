@@ -47,6 +47,7 @@ export interface GameStatePayload {
   buzzedPlayerName: string | null;
   revealCorrectIndex: number | null;
   lastAnswerCorrect: boolean | null;
+  deadline: number | null; // epoch ms when buzzing closes; null if no active timer
   players: PublicPlayer[];
 }
 
@@ -66,6 +67,7 @@ export interface HostGameState {
   buzzedPlayerId: string | null;
   buzzedPlayerName: string | null;
   lastAnswerCorrect: boolean | null;
+  deadline: number | null;
   scores: Record<string, number>;
   members: RoomMember[];
 }

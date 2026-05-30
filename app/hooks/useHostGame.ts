@@ -6,7 +6,9 @@ import { createPusherClient } from '@/app/lib/pusher-client';
 import { channelName } from '@/app/lib/roomCode';
 import { getCategory, shuffle } from '@/app/lib/categories';
 import { triggerEvent } from '@/app/lib/trigger';
-import { EVENT_STATE, EVENT_BUZZ, POINTS_PER_CORRECT, QUESTIONS_PER_GAME } from '@/app/lib/constants';
+import { EVENT_STATE, EVENT_BUZZ, POINTS_PER_CORRECT, QUESTIONS_PER_GAME, QUESTION_SECONDS } from '@/app/lib/constants';
+
+const newDeadline = () => Date.now() + QUESTION_SECONDS * 1000;
 import type {
   HostGameState,
   GameStatePayload,
@@ -33,6 +35,7 @@ function buildPayload(s: HostGameState): GameStatePayload {
     buzzedPlayerName: s.buzzedPlayerName,
     revealCorrectIndex: s.phase === 'reveal' && q ? q.correct : null,
     lastAnswerCorrect: s.lastAnswerCorrect,
+    deadline: s.deadline,
     players,
   };
 }
@@ -64,6 +67,7 @@ export function useHostGame(code: string, categoryId: string) {
       buzzedPlayerId: null,
       buzzedPlayerName: null,
       lastAnswerCorrect: null,
+      deadline: null,
       scores: {},
       members: [],
     };
@@ -95,9 +99,9 @@ export function useHostGame(code: string, categoryId: string) {
       const cur = stateRef.current!;
       const members = cur.members.filter((x) => x.id !== m.id);
       let patch: Partial<HostGameState> = { members };
-      // If the player who was buzzed left, reopen the question.
+      // If the player who was buzzed left, reopen the question with a fresh timer.
       if (cur.buzzedPlayerId === m.id && cur.phase === 'buzzed') {
-        patch = { ...patch, buzzedPlayerId: null, buzzedPlayerName: null, phase: 'question' };
+        patch = { ...patch, buzzedPlayerId: null, buzzedPlayerName: null, phase: 'question', deadline: newDeadline() };
       }
       commit({ ...cur, ...patch });
     });
@@ -106,7 +110,7 @@ export function useHostGame(code: string, categoryId: string) {
     channel.bind(EVENT_BUZZ, (data: BuzzPayload) => {
       const cur = stateRef.current!;
       if (cur.phase !== 'question' || cur.buzzedPlayerId) return;
-      commit({ ...cur, phase: 'buzzed', buzzedPlayerId: data.playerId, buzzedPlayerName: data.name });
+      commit({ ...cur, phase: 'buzzed', buzzedPlayerId: data.playerId, buzzedPlayerName: data.name, deadline: null });
     });
 
     return () => {
@@ -121,17 +125,30 @@ export function useHostGame(code: string, categoryId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, categoryId]);
 
+  // Auto-reveal when the countdown expires with nobody buzzed in.
+  useEffect(() => {
+    if (!state || state.phase !== 'question' || !state.deadline) return;
+    const ms = Math.max(0, state.deadline - Date.now());
+    const id = setTimeout(() => {
+      const cur = stateRef.current;
+      if (cur && cur.phase === 'question' && !cur.buzzedPlayerId) {
+        commit({ ...cur, phase: 'reveal', lastAnswerCorrect: null, deadline: null });
+      }
+    }, ms);
+    return () => clearTimeout(id);
+  }, [state, commit]);
+
   // ---- Host actions ----
   const startGame = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
-    commit({ ...cur, phase: 'question', index: 0, buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null });
+    commit({ ...cur, phase: 'question', index: 0, buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, deadline: newDeadline() });
   }, [commit]);
 
   const reveal = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
-    commit({ ...cur, phase: 'reveal' });
+    commit({ ...cur, phase: 'reveal', deadline: null });
   }, [commit]);
 
   const judge = useCallback((correct: boolean) => {
@@ -141,23 +158,23 @@ export function useHostGame(code: string, categoryId: string) {
     if (correct && cur.buzzedPlayerId) {
       scores[cur.buzzedPlayerId] = (scores[cur.buzzedPlayerId] ?? 0) + POINTS_PER_CORRECT;
     }
-    commit({ ...cur, phase: 'reveal', lastAnswerCorrect: correct, scores });
+    commit({ ...cur, phase: 'reveal', lastAnswerCorrect: correct, scores, deadline: null });
   }, [commit]);
 
-  // Let a wrong buzzer pass — reopen buzzing without revealing.
+  // Let a wrong buzzer pass — reopen buzzing with a fresh timer.
   const reopen = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
-    commit({ ...cur, phase: 'question', buzzedPlayerId: null, buzzedPlayerName: null });
+    commit({ ...cur, phase: 'question', buzzedPlayerId: null, buzzedPlayerName: null, deadline: newDeadline() });
   }, [commit]);
 
   const next = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
     if (cur.index >= cur.questions.length - 1) {
-      commit({ ...cur, phase: 'ended' });
+      commit({ ...cur, phase: 'ended', deadline: null });
     } else {
-      commit({ ...cur, index: cur.index + 1, phase: 'question', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null });
+      commit({ ...cur, index: cur.index + 1, phase: 'question', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, deadline: newDeadline() });
     }
   }, [commit]);
 
@@ -166,7 +183,7 @@ export function useHostGame(code: string, categoryId: string) {
     if (!cur) return;
     const cat = getCategory(cur.category);
     const freshQuestions = shuffle(cat ? cat.questions : cur.questions).slice(0, QUESTIONS_PER_GAME);
-    commit({ ...cur, questions: freshQuestions, index: 0, phase: 'lobby', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, scores: {} });
+    commit({ ...cur, questions: freshQuestions, index: 0, phase: 'lobby', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, deadline: null, scores: {} });
   }, [commit]);
 
   const players = state

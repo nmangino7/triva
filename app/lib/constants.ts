@@ -5,6 +5,9 @@ export const POINTS_PER_CORRECT = 10;
 // Each game draws this many questions at random from the category's pool.
 export const QUESTIONS_PER_GAME = 20;
 
+// Seconds players have to buzz in before the answer auto-reveals.
+export const QUESTION_SECONDS = 20;
+
 // Channel naming. Pusher presence channels must be prefixed "presence-".
 export const CHANNEL_PREFIX = 'presence-trivia-';
 

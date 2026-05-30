@@ -5,7 +5,8 @@ import { HostGameState, PublicPlayer } from '@/app/types';
 import QuestionCard from '@/app/components/QuestionCard';
 import ColorOptionBlock from '@/app/components/ColorOptionBlock';
 import Leaderboard from '@/app/components/Leaderboard';
-import { playBuzz } from '@/app/lib/sound';
+import CountdownRing from '@/app/components/CountdownRing';
+import { playBuzz, playCorrect, playWrong, playReveal } from '@/app/lib/sound';
 import { celebrate } from '@/app/lib/effects';
 
 interface Props {
@@ -30,9 +31,17 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
     if (!state.buzzedPlayerId) lastBuzzed.current = null;
   }, [state.buzzedPlayerId]);
 
-  // Confetti when a correct answer is awarded.
+  // Sound + confetti when the answer is revealed.
   useEffect(() => {
-    if (state.phase === 'reveal' && state.lastAnswerCorrect === true) celebrate();
+    if (state.phase !== 'reveal') return;
+    if (state.lastAnswerCorrect === true) {
+      celebrate();
+      playCorrect();
+    } else if (state.lastAnswerCorrect === false) {
+      playWrong();
+    } else {
+      playReveal();
+    }
   }, [state.phase, state.lastAnswerCorrect]);
 
   if (!q) return null;
@@ -62,7 +71,10 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
       <div className="bg-white/10 rounded-2xl p-5 space-y-4">
         {state.phase === 'question' && (
           <>
-            <p className="text-center text-white text-lg font-semibold animate-pulse">Waiting for someone to buzz…</p>
+            <div className="flex flex-col items-center gap-2">
+              {state.deadline && <CountdownRing deadline={state.deadline} />}
+              <p className="text-center text-white text-lg font-semibold">Waiting for someone to buzz…</p>
+            </div>
             <div className="flex gap-3 justify-center">
               <button onClick={onReveal} className="px-5 py-2 rounded-xl bg-white/20 text-white font-semibold hover:bg-white/30">
                 Reveal answer

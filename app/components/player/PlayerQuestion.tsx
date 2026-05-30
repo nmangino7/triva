@@ -5,7 +5,8 @@ import { GameStatePayload } from '@/app/types';
 import QuestionCard from '@/app/components/QuestionCard';
 import ColorOptionBlock from '@/app/components/ColorOptionBlock';
 import Buzzer from '@/app/components/Buzzer';
-import { playBuzz } from '@/app/lib/sound';
+import CountdownRing from '@/app/components/CountdownRing';
+import { playBuzz, playCorrect, playWrong, playReveal } from '@/app/lib/sound';
 import { celebrate, buzzHaptic } from '@/app/lib/effects';
 
 interface Props {
@@ -18,9 +19,17 @@ export default function PlayerQuestion({ state, myId, onBuzz }: Props) {
   const q = state.question;
   const iBuzzed = state.buzzedPlayerId === myId;
 
-  // Celebrate when this player buzzed in and the answer was ruled correct.
+  // Reveal sound for everyone; confetti only for the player who got it right.
   useEffect(() => {
-    if (state.phase === 'reveal' && iBuzzed && state.lastAnswerCorrect === true) celebrate();
+    if (state.phase !== 'reveal') return;
+    if (state.lastAnswerCorrect === true) {
+      playCorrect();
+      if (iBuzzed) celebrate();
+    } else if (state.lastAnswerCorrect === false) {
+      playWrong();
+    } else {
+      playReveal();
+    }
   }, [state.phase, state.lastAnswerCorrect, iBuzzed]);
 
   if (!q) return null;
@@ -62,6 +71,12 @@ export default function PlayerQuestion({ state, myId, onBuzz }: Props) {
           <ColorOptionBlock key={i} index={i} text={opt} status={blockStatus(i)} />
         ))}
       </div>
+
+      {canBuzz && state.deadline && (
+        <div className="flex justify-center">
+          <CountdownRing deadline={state.deadline} />
+        </div>
+      )}
 
       {someoneElseBuzzed && state.phase === 'buzzed' && (
         <p className="animate-pop-in text-center text-white text-lg font-bold">🔔 {state.buzzedPlayerName} buzzed first!</p>
