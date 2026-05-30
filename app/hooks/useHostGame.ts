@@ -6,7 +6,7 @@ import { createPusherClient } from '@/app/lib/pusher-client';
 import { channelName } from '@/app/lib/roomCode';
 import { getCategory, shuffle } from '@/app/lib/categories';
 import { triggerEvent } from '@/app/lib/trigger';
-import { EVENT_STATE, EVENT_BUZZ, POINTS_PER_CORRECT } from '@/app/lib/constants';
+import { EVENT_STATE, EVENT_BUZZ, POINTS_PER_CORRECT, QUESTIONS_PER_GAME } from '@/app/lib/constants';
 import type {
   HostGameState,
   GameStatePayload,
@@ -51,7 +51,7 @@ export function useHostGame(code: string, categoryId: string) {
 
   useEffect(() => {
     const cat = getCategory(categoryId);
-    const questions = shuffle(cat ? cat.questions : []);
+    const questions = shuffle(cat ? cat.questions : []).slice(0, QUESTIONS_PER_GAME);
     const hostId =
       typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `host-${Date.now()}`;
 
@@ -164,7 +164,9 @@ export function useHostGame(code: string, categoryId: string) {
   const playAgain = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
-    commit({ ...cur, questions: shuffle(cur.questions), index: 0, phase: 'lobby', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, scores: {} });
+    const cat = getCategory(cur.category);
+    const freshQuestions = shuffle(cat ? cat.questions : cur.questions).slice(0, QUESTIONS_PER_GAME);
+    commit({ ...cur, questions: freshQuestions, index: 0, phase: 'lobby', buzzedPlayerId: null, buzzedPlayerName: null, lastAnswerCorrect: null, scores: {} });
   }, [commit]);
 
   const players = state
