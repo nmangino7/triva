@@ -12,7 +12,7 @@ export default function PlayPage() {
     typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('code') ?? '' : '';
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 p-6 flex flex-col justify-center">
+    <main className="animated-bg min-h-screen bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 p-6 flex flex-col justify-center">
       <div className="py-6 w-full">
         {joined ? (
           <PlayerGame code={joined.code} name={joined.name} />

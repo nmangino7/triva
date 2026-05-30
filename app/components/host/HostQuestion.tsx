@@ -6,6 +6,7 @@ import QuestionCard from '@/app/components/QuestionCard';
 import ColorOptionBlock from '@/app/components/ColorOptionBlock';
 import Leaderboard from '@/app/components/Leaderboard';
 import { playBuzz } from '@/app/lib/sound';
+import { celebrate } from '@/app/lib/effects';
 
 interface Props {
   state: HostGameState;
@@ -28,6 +29,11 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
     }
     if (!state.buzzedPlayerId) lastBuzzed.current = null;
   }, [state.buzzedPlayerId]);
+
+  // Confetti when a correct answer is awarded.
+  useEffect(() => {
+    if (state.phase === 'reveal' && state.lastAnswerCorrect === true) celebrate();
+  }, [state.phase, state.lastAnswerCorrect]);
 
   if (!q) return null;
 
@@ -70,7 +76,7 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
 
         {state.phase === 'buzzed' && (
           <>
-            <p className="text-center text-yellow-300 text-2xl font-black">🔔 {state.buzzedPlayerName} buzzed in!</p>
+            <p className="animate-pop-in text-center text-yellow-300 text-2xl font-black">🔔 {state.buzzedPlayerName} buzzed in!</p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => onJudge(true)} className="px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold text-lg hover:bg-emerald-400 active:scale-95">
                 ✓ Correct

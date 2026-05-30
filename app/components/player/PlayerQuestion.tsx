@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import { GameStatePayload } from '@/app/types';
 import QuestionCard from '@/app/components/QuestionCard';
 import ColorOptionBlock from '@/app/components/ColorOptionBlock';
 import Buzzer from '@/app/components/Buzzer';
 import { playBuzz } from '@/app/lib/sound';
+import { celebrate, buzzHaptic } from '@/app/lib/effects';
 
 interface Props {
   state: GameStatePayload;
@@ -14,15 +16,22 @@ interface Props {
 
 export default function PlayerQuestion({ state, myId, onBuzz }: Props) {
   const q = state.question;
+  const iBuzzed = state.buzzedPlayerId === myId;
+
+  // Celebrate when this player buzzed in and the answer was ruled correct.
+  useEffect(() => {
+    if (state.phase === 'reveal' && iBuzzed && state.lastAnswerCorrect === true) celebrate();
+  }, [state.phase, state.lastAnswerCorrect, iBuzzed]);
+
   if (!q) return null;
 
   const myScore = state.players.find((p) => p.id === myId)?.score ?? 0;
-  const iBuzzed = state.buzzedPlayerId === myId;
   const someoneElseBuzzed = !!state.buzzedPlayerId && !iBuzzed;
   const canBuzz = state.phase === 'question' && !state.buzzedPlayerId;
 
   const handleBuzz = () => {
     playBuzz(900);
+    buzzHaptic();
     onBuzz();
   };
 
@@ -55,10 +64,10 @@ export default function PlayerQuestion({ state, myId, onBuzz }: Props) {
       </div>
 
       {someoneElseBuzzed && state.phase === 'buzzed' && (
-        <p className="text-center text-white text-lg font-bold">🔔 {state.buzzedPlayerName} buzzed first!</p>
+        <p className="animate-pop-in text-center text-white text-lg font-bold">🔔 {state.buzzedPlayerName} buzzed first!</p>
       )}
       {iBuzzed && state.phase === 'buzzed' && (
-        <p className="text-center text-yellow-300 text-xl font-black">🎉 You buzzed in — answer out loud!</p>
+        <p className="animate-pop-in text-center text-yellow-300 text-xl font-black">🎉 You buzzed in — answer out loud!</p>
       )}
 
       <Buzzer disabled={!canBuzz} onBuzz={handleBuzz} label={buzzLabel} />

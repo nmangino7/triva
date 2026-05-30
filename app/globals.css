@@ -14,13 +14,56 @@ body {
   0%, 100% { transform: scale(1); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35); }
   50% { transform: scale(1.04); box-shadow: 0 28px 60px rgba(220, 38, 38, 0.5); }
 }
+.animate-pulse-slow { animation: pulse-slow 1.4s ease-in-out infinite; }
 
-.animate-pulse-slow {
-  animation: pulse-slow 1.4s ease-in-out infinite;
+/* Animated background gradient for full-screen scenes */
+@keyframes gradient-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animated-bg {
+  background-size: 200% 200%;
+  animation: gradient-pan 14s ease infinite;
 }
 
+/* Staggered entrance for answer blocks / cards */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fade-in-up 0.4s ease-out both; }
+
+/* Pop-in for headings and banners */
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-pop-in { animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Buzz-in shake */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.animate-shake { animation: shake 0.4s ease-in-out; }
+
+/* Slow spin for decorative accents */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float { animation: float-y 3s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-slow {
-    animation: none;
-  }
+  .animate-pulse-slow,
+  .animated-bg,
+  .animate-fade-in-up,
+  .animate-pop-in,
+  .animate-shake,
+  .animate-float { animation: none; }
 }

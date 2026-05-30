@@ -21,14 +21,15 @@ export default function ColorOptionBlock({ index, text, status = 'idle' }: Props
 
   return (
     <div
-      className={`relative flex items-center gap-3 rounded-2xl p-4 sm:p-5 text-white font-bold shadow-lg transition-all ${
+      style={{ animationDelay: `${index * 70}ms` }}
+      className={`animate-fade-in-up relative flex items-center gap-3 rounded-2xl p-4 sm:p-5 text-white font-bold shadow-lg transition-all duration-300 ${
         isCorrect
-          ? 'bg-emerald-500 ring-4 ring-emerald-200 scale-[1.02]'
+          ? 'bg-emerald-500 ring-4 ring-emerald-200 scale-[1.03]'
           : isWrong
           ? 'bg-gray-400 opacity-60'
           : isDim
-          ? `${p.bg} opacity-40`
-          : p.bg
+          ? `${p.bg} opacity-30 scale-95`
+          : `${p.bg} hover:brightness-110`
       }`}
     >
       <span className="text-2xl sm:text-3xl drop-shadow">{p.shape}</span>

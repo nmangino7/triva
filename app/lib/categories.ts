@@ -4,6 +4,7 @@ import { general } from '@/app/data/general';
 import { entertainment } from '@/app/data/entertainment';
 import { sports } from '@/app/data/sports';
 import { science } from '@/app/data/science';
+import { popculture } from '@/app/data/popculture';
 
 interface CategoryEntry extends CategoryMeta {
   questions: Question[];
@@ -15,6 +16,7 @@ export const CATEGORIES: CategoryEntry[] = [
   { id: 'entertainment', label: 'Entertainment', emoji: '🎬', color: 'from-pink-400 to-rose-600', blurb: 'Movies, TV & music', questions: entertainment },
   { id: 'sports', label: 'Sports', emoji: '⚽', color: 'from-orange-400 to-red-600', blurb: 'Games, athletes & records', questions: sports },
   { id: 'science', label: 'Science / History / Geo', emoji: '🔬', color: 'from-violet-400 to-purple-600', blurb: 'The world, past & present', questions: science },
+  { id: 'popculture', label: 'Pop Culture', emoji: '🌟', color: 'from-fuchsia-400 to-pink-600', blurb: 'Brands, gaming, internet & more', questions: popculture },
 ];
 
 export function getCategory(id: string): CategoryEntry | undefined {
