@@ -13,6 +13,7 @@ import {
   POINTS_PER_CORRECT,
   SPEED_BONUS_MAX,
   QUESTION_SECONDS,
+  QUESTIONS_PER_GAME,
 } from '@/app/lib/constants';
 import type {
   HostGameState,
@@ -101,6 +102,7 @@ export function useHostGame(code: string, categoryId: string) {
       category: categoryId,
       gameMode: 'buzzer',
       difficultyFilter: 'all',
+      roundLength: QUESTIONS_PER_GAME,
       questions: [],
       index: 0,
       phase: 'lobby',
@@ -205,14 +207,15 @@ export function useHostGame(code: string, categoryId: string) {
   }, [state, commit]);
 
   // ---- Host actions ----
-  const startGame = useCallback((opts: { gameMode: GameMode; difficultyFilter: DifficultyFilter }) => {
+  const startGame = useCallback((opts: { gameMode: GameMode; difficultyFilter: DifficultyFilter; roundLength: number }) => {
     const cur = stateRef.current;
     if (!cur) return;
-    const questions = pickQuestions(cur.category, opts.difficultyFilter);
+    const questions = pickQuestions(cur.category, opts.difficultyFilter, opts.roundLength);
     commit({
       ...cur,
       gameMode: opts.gameMode,
       difficultyFilter: opts.difficultyFilter,
+      roundLength: opts.roundLength,
       questions,
       index: 0,
       phase: 'question',
@@ -281,7 +284,7 @@ export function useHostGame(code: string, categoryId: string) {
   const playAgain = useCallback(() => {
     const cur = stateRef.current;
     if (!cur) return;
-    const questions = pickQuestions(cur.category, cur.difficultyFilter);
+    const questions = pickQuestions(cur.category, cur.difficultyFilter, cur.roundLength);
     commit({
       ...cur,
       questions,

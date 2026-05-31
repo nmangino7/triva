@@ -85,6 +85,7 @@ export interface HostGameState {
   category: string;
   gameMode: GameMode;
   difficultyFilter: DifficultyFilter;
+  roundLength: number;
   questions: Question[];
   index: number;
   phase: GamePhase;

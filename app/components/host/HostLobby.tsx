@@ -6,11 +6,12 @@ import RoomCodeBadge from '@/app/components/RoomCodeBadge';
 import Roster from '@/app/components/Roster';
 import QrJoin from '@/app/components/QrJoin';
 import { getCategory, availableCount } from '@/app/lib/categories';
+import { ROUND_LENGTHS, QUESTIONS_PER_GAME } from '@/app/lib/constants';
 
 interface Props {
   state: HostGameState;
   players: PublicPlayer[];
-  onStart: (opts: { gameMode: GameMode; difficultyFilter: DifficultyFilter }) => void;
+  onStart: (opts: { gameMode: GameMode; difficultyFilter: DifficultyFilter; roundLength: number }) => void;
 }
 
 const MODES: { key: GameMode; label: string; hint: string }[] = [
@@ -28,8 +29,9 @@ export default function HostLobby({ state, players, onStart }: Props) {
   const cat = getCategory(state.category);
   const [mode, setMode] = useState<GameMode>('buzzer');
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all');
+  const [roundLength, setRoundLength] = useState<number>(QUESTIONS_PER_GAME);
   const joinUrl = typeof window !== 'undefined' ? `${window.location.host}/play` : '/play';
-  const count = availableCount(state.category, difficulty);
+  const count = availableCount(state.category, difficulty, roundLength);
   const modeHint = MODES.find((m) => m.key === mode)?.hint;
 
   return (
@@ -85,11 +87,29 @@ export default function HostLobby({ state, players, onStart }: Props) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Round length selector */}
+      <div className="space-y-2">
+        <p className="text-white/70 font-semibold text-sm">ROUND LENGTH</p>
+        <div className="inline-flex rounded-2xl bg-white/10 p-1 gap-1">
+          {ROUND_LENGTHS.map((n) => (
+            <button
+              key={n}
+              onClick={() => setRoundLength(n)}
+              className={`px-4 py-2 rounded-xl font-semibold transition ${
+                roundLength === n ? 'bg-white text-gray-900' : 'text-white hover:bg-white/10'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
         <p className="text-white/60 text-sm">{count} questions this round</p>
       </div>
 
       <button
-        onClick={() => onStart({ gameMode: mode, difficultyFilter: difficulty })}
+        onClick={() => onStart({ gameMode: mode, difficultyFilter: difficulty, roundLength })}
         disabled={players.length < 1}
         className="w-full sm:w-auto px-14 py-4 rounded-2xl bg-yellow-300 text-black font-black text-2xl shadow-xl hover:bg-yellow-200 hover:scale-105 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
       >

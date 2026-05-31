@@ -38,18 +38,26 @@ export function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-// How many questions a given category+difficulty would yield this game.
-export function availableCount(categoryId: string, filter: DifficultyFilter): number {
+// How many questions a given category+difficulty+length would actually yield.
+export function availableCount(
+  categoryId: string,
+  filter: DifficultyFilter,
+  count: number = QUESTIONS_PER_GAME
+): number {
   const pool = getCategory(categoryId)?.questions ?? [];
   const filtered = filter === 'all' ? pool : pool.filter((q) => q.difficulty === filter);
-  return Math.min(QUESTIONS_PER_GAME, filtered.length || pool.length);
+  return Math.min(count, filtered.length || pool.length);
 }
 
-// Pick a shuffled set of questions for a game, honoring the difficulty filter.
+// Pick a shuffled set of questions for a game, honoring difficulty + round length.
 // Falls back to the full pool if a difficulty subset is too small.
-export function pickQuestions(categoryId: string, filter: DifficultyFilter): Question[] {
+export function pickQuestions(
+  categoryId: string,
+  filter: DifficultyFilter,
+  count: number = QUESTIONS_PER_GAME
+): Question[] {
   const pool = getCategory(categoryId)?.questions ?? [];
   const filtered = filter === 'all' ? pool : pool.filter((q) => q.difficulty === filter);
-  const base = filtered.length >= QUESTIONS_PER_GAME ? filtered : filtered.length > 0 ? filtered : pool;
-  return shuffle(base).slice(0, QUESTIONS_PER_GAME);
+  const base = filtered.length >= count ? filtered : filtered.length > 0 ? filtered : pool;
+  return shuffle(base).slice(0, count);
 }

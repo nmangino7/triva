@@ -2,8 +2,11 @@
 
 export const POINTS_PER_CORRECT = 10;
 
-// Each game draws this many questions at random from the category's pool.
+// Default number of questions drawn at random from the category's pool.
 export const QUESTIONS_PER_GAME = 20;
+
+// Host-selectable round lengths.
+export const ROUND_LENGTHS = [10, 20, 30, 50];
 
 // Seconds players have to buzz in before the answer auto-reveals.
 export const QUESTION_SECONDS = 20;
