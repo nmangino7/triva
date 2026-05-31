@@ -12,17 +12,34 @@ import { celebrate } from '@/app/lib/effects';
 interface Props {
   state: HostGameState;
   players: PublicPlayer[];
+  isLast: boolean;
+  optionTally: number[] | null;
+  answeredCount: number;
+  playerCount: number;
   onReveal: () => void;
   onJudge: (correct: boolean) => void;
   onReopen: () => void;
+  onToStandings: () => void;
   onNext: () => void;
 }
 
-export default function HostQuestion({ state, players, onReveal, onJudge, onReopen, onNext }: Props) {
+export default function HostQuestion({
+  state,
+  players,
+  isLast,
+  optionTally,
+  answeredCount,
+  playerCount,
+  onReveal,
+  onJudge,
+  onReopen,
+  onToStandings,
+  onNext,
+}: Props) {
   const q = state.questions[state.index];
+  const tap = state.gameMode === 'tap';
   const lastBuzzed = useRef<string | null>(null);
 
-  // Beep when a new buzz arrives.
   useEffect(() => {
     if (state.buzzedPlayerId && state.buzzedPlayerId !== lastBuzzed.current) {
       lastBuzzed.current = state.buzzedPlayerId;
@@ -31,9 +48,18 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
     if (!state.buzzedPlayerId) lastBuzzed.current = null;
   }, [state.buzzedPlayerId]);
 
-  // Sound + confetti when the answer is revealed.
   useEffect(() => {
     if (state.phase !== 'reveal') return;
+    if (tap) {
+      const gotIt = optionTally && q ? optionTally[q.correct] > 0 : false;
+      if (gotIt) {
+        celebrate();
+        playCorrect();
+      } else {
+        playReveal();
+      }
+      return;
+    }
     if (state.lastAnswerCorrect === true) {
       celebrate();
       playCorrect();
@@ -42,7 +68,7 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
     } else {
       playReveal();
     }
-  }, [state.phase, state.lastAnswerCorrect]);
+  }, [state.phase, state.lastAnswerCorrect, tap, optionTally, q]);
 
   if (!q) return null;
 
@@ -50,6 +76,8 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
     if (state.phase === 'reveal') return i === q.correct ? 'correct' : 'dim';
     return 'idle';
   };
+
+  const correctCount = optionTally ? optionTally[q.correct] : 0;
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -63,30 +91,34 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {q.options.map((opt, i) => (
-          <ColorOptionBlock key={i} index={i} text={opt} status={blockStatus(i)} />
+          <ColorOptionBlock
+            key={i}
+            index={i}
+            text={opt}
+            status={blockStatus(i)}
+            tally={tap && state.phase === 'reveal' && optionTally ? optionTally[i] : undefined}
+          />
         ))}
       </div>
 
-      {/* Host control bar */}
       <div className="bg-white/10 rounded-2xl p-5 space-y-4">
         {state.phase === 'question' && (
           <>
             <div className="flex flex-col items-center gap-2">
               {state.deadline && <CountdownRing deadline={state.deadline} />}
-              <p className="text-center text-white text-lg font-semibold">Waiting for someone to buzz…</p>
+              <p className="text-center text-white text-lg font-semibold">
+                {tap ? `${answeredCount} / ${playerCount} answered` : 'Waiting for someone to buzz…'}
+              </p>
             </div>
             <div className="flex gap-3 justify-center">
               <button onClick={onReveal} className="px-5 py-2 rounded-xl bg-white/20 text-white font-semibold hover:bg-white/30">
-                Reveal answer
-              </button>
-              <button onClick={onNext} className="px-5 py-2 rounded-xl bg-white/20 text-white font-semibold hover:bg-white/30">
-                Skip →
+                {tap ? 'Reveal now' : 'Reveal answer'}
               </button>
             </div>
           </>
         )}
 
-        {state.phase === 'buzzed' && (
+        {state.phase === 'buzzed' && !tap && (
           <>
             <p className="animate-pop-in text-center text-yellow-300 text-2xl font-black">🔔 {state.buzzedPlayerName} buzzed in!</p>
             <div className="flex gap-3 justify-center">
@@ -104,13 +136,20 @@ export default function HostQuestion({ state, players, onReveal, onJudge, onReop
         {state.phase === 'reveal' && (
           <>
             <p className="text-center text-white text-xl font-bold">
-              {state.lastAnswerCorrect === true && `✅ ${state.buzzedPlayerName} got it! +10`}
-              {state.lastAnswerCorrect === false && '❌ No points'}
-              {state.lastAnswerCorrect === null && `Answer: ${q.options[q.correct]}`}
+              {tap
+                ? `${correctCount} of ${playerCount} got it right`
+                : state.lastAnswerCorrect === true
+                ? `✅ ${state.buzzedPlayerName} got it! +10`
+                : state.lastAnswerCorrect === false
+                ? '❌ No points'
+                : `Answer: ${q.options[q.correct]}`}
             </p>
             <div className="flex justify-center">
-              <button onClick={onNext} className="px-8 py-3 rounded-xl bg-yellow-300 text-black font-black text-lg hover:bg-yellow-200 active:scale-95">
-                {state.index >= state.questions.length - 1 ? 'See Results →' : 'Next Question →'}
+              <button
+                onClick={isLast ? onNext : onToStandings}
+                className="px-8 py-3 rounded-xl bg-yellow-300 text-black font-black text-lg hover:bg-yellow-200 active:scale-95"
+              >
+                {isLast ? 'See Results →' : 'Standings →'}
               </button>
             </div>
           </>

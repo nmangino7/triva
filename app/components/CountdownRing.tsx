@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { QUESTION_SECONDS } from '@/app/lib/constants';
+import { useEffect, useRef, useState } from 'react';
+import { QUESTION_SECONDS, COUNTDOWN_TICK_SECONDS } from '@/app/lib/constants';
+import { playTick } from '@/app/lib/sound';
 
 // Smooth local countdown derived from a shared epoch-ms deadline.
 export default function CountdownRing({ deadline }: { deadline: number }) {
   const [now, setNow] = useState(() => Date.now());
+  const lastTick = useRef<number>(-1);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 100);
@@ -14,6 +16,14 @@ export default function CountdownRing({ deadline }: { deadline: number }) {
 
   const remainingMs = Math.max(0, deadline - now);
   const seconds = Math.ceil(remainingMs / 1000);
+
+  // Tick once per second in the final stretch.
+  useEffect(() => {
+    if (seconds > 0 && seconds <= COUNTDOWN_TICK_SECONDS && seconds !== lastTick.current) {
+      lastTick.current = seconds;
+      playTick();
+    }
+  }, [seconds]);
   const fraction = Math.max(0, Math.min(1, remainingMs / (QUESTION_SECONDS * 1000)));
 
   const size = 76;

@@ -5,6 +5,7 @@ import { CATEGORIES } from '@/app/lib/categories';
 import { generateRoomCode } from '@/app/lib/roomCode';
 import BrandHeader from '@/app/components/BrandHeader';
 import HostGame from '@/app/components/host/HostGame';
+import MuteToggle from '@/app/components/MuteToggle';
 
 export default function HostPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -17,6 +18,9 @@ export default function HostPage() {
 
   return (
     <main className="animated-bg min-h-screen bg-gradient-to-br from-indigo-700 via-purple-700 to-fuchsia-700 p-6">
+      <div className="fixed top-4 right-4 z-50">
+        <MuteToggle />
+      </div>
       <div className="py-6">
         {!categoryId ? (
           <div className="max-w-3xl mx-auto">

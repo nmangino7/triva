@@ -1,13 +1,25 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePlayerGame } from '@/app/hooks/usePlayerGame';
+import { Avatar } from '@/app/types';
+import { startLobbyMusic, stopLobbyMusic } from '@/app/lib/music';
 import PlayerLobby from './PlayerLobby';
 import PlayerQuestion from './PlayerQuestion';
+import PlayerStandings from './PlayerStandings';
 import PlayerResults from './PlayerResults';
 import HostLeftScreen from './HostLeftScreen';
 
-export default function PlayerGame({ code, name }: { code: string; name: string }) {
-  const { state, status, hostLeft, myId, buzz } = usePlayerGame(code, name, true);
+export default function PlayerGame({ code, name, avatar }: { code: string; name: string; avatar: Avatar }) {
+  const { state, status, hostLeft, myId, myAnswer, buzz, answer } = usePlayerGame(code, name, avatar, true);
+
+  // Lobby music while waiting, stop once the game is underway.
+  const inLobby = !state || state.phase === 'lobby';
+  useEffect(() => {
+    if (inLobby && !hostLeft) startLobbyMusic();
+    else stopLobbyMusic();
+    return () => stopLobbyMusic();
+  }, [inLobby, hostLeft]);
 
   if (hostLeft) return <HostLeftScreen />;
 
@@ -22,14 +34,17 @@ export default function PlayerGame({ code, name }: { code: string; name: string 
     );
   }
 
-  // Connected but no state yet, or game hasn't started → lobby.
   if (!state || state.phase === 'lobby') {
-    return <PlayerLobby state={state} name={name} code={code} />;
+    return <PlayerLobby state={state} name={name} code={code} avatar={avatar} />;
+  }
+
+  if (state.phase === 'leaderboard') {
+    return <PlayerStandings state={state} myId={myId} />;
   }
 
   if (state.phase === 'ended') {
     return <PlayerResults state={state} myId={myId} />;
   }
 
-  return <PlayerQuestion state={state} myId={myId} onBuzz={buzz} />;
+  return <PlayerQuestion state={state} myId={myId} myAnswer={myAnswer} onBuzz={buzz} onAnswer={answer} />;
 }

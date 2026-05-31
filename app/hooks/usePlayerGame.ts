@@ -5,8 +5,8 @@ import type { Channel } from 'pusher-js';
 import { createPusherClient } from '@/app/lib/pusher-client';
 import { channelName } from '@/app/lib/roomCode';
 import { triggerEvent } from '@/app/lib/trigger';
-import { EVENT_STATE, EVENT_BUZZ } from '@/app/lib/constants';
-import type { GameStatePayload } from '@/app/types';
+import { EVENT_STATE, EVENT_BUZZ, EVENT_ANSWER } from '@/app/lib/constants';
+import type { GameStatePayload, Avatar } from '@/app/types';
 
 type ConnStatus = 'connecting' | 'connected' | 'error';
 
@@ -20,19 +20,21 @@ function getUserId(): string {
   return id;
 }
 
-export function usePlayerGame(code: string, name: string, enabled: boolean) {
+export function usePlayerGame(code: string, name: string, avatar: Avatar | undefined, enabled: boolean) {
   const [state, setState] = useState<GameStatePayload | null>(null);
   const [status, setStatus] = useState<ConnStatus>('connecting');
   const [hostLeft, setHostLeft] = useState(false);
+  const [myAnswer, setMyAnswer] = useState<number | null>(null);
   const meRef = useRef<string>('');
   const hostIdRef = useRef<string | null>(null);
+  const lastQuestionRef = useRef<number>(-1);
 
   useEffect(() => {
     if (!enabled || !code || !name) return;
     const userId = getUserId();
     meRef.current = userId;
 
-    const pusher = createPusherClient({ userId, name, role: 'player' });
+    const pusher = createPusherClient({ userId, name, role: 'player', avatar });
     pusher.connection.bind('connected', () => setStatus('connected'));
     pusher.connection.bind('error', () => setStatus('error'));
     pusher.connection.bind('unavailable', () => setStatus('error'));
@@ -45,7 +47,7 @@ export function usePlayerGame(code: string, name: string, enabled: boolean) {
       });
     };
 
-    channel.bind('pusher:subscription_succeeded', (members: any) => {
+    channel.bind('pusher:subscription_succeeded', (members: { each: (cb: (m: { id: string; info: { role: string } }) => void) => void }) => {
       setStatus('connected');
       trackHost(members);
     });
@@ -60,6 +62,11 @@ export function usePlayerGame(code: string, name: string, enabled: boolean) {
     });
 
     channel.bind(EVENT_STATE, (data: GameStatePayload) => {
+      // Reset my locked-in answer whenever a new question begins.
+      if (data.questionNumber !== lastQuestionRef.current) {
+        lastQuestionRef.current = data.questionNumber;
+        if (data.phase === 'question') setMyAnswer(null);
+      }
       setState(data);
       if (data.phase === 'ended') setHostLeft(false);
     });
@@ -73,16 +80,22 @@ export function usePlayerGame(code: string, name: string, enabled: boolean) {
         /* noop */
       }
     };
-  }, [code, name, enabled]);
+  }, [code, name, avatar, enabled]);
 
   const buzz = useCallback(() => {
     if (!state || state.phase !== 'question' || state.buzzedPlayerId) return;
-    triggerEvent(channelName(code), EVENT_BUZZ, {
-      playerId: meRef.current,
-      name,
-      t: Date.now(),
-    });
+    triggerEvent(channelName(code), EVENT_BUZZ, { playerId: meRef.current, name, t: Date.now() });
   }, [code, name, state]);
 
-  return { state, status, hostLeft, myId: meRef.current, buzz };
+  const answer = useCallback(
+    (selectedIndex: number) => {
+      if (!state || state.gameMode !== 'tap' || state.phase !== 'question') return;
+      if (myAnswer !== null) return;
+      setMyAnswer(selectedIndex);
+      triggerEvent(channelName(code), EVENT_ANSWER, { playerId: meRef.current, selectedIndex, t: Date.now() });
+    },
+    [code, state, myAnswer]
+  );
+
+  return { state, status, hostLeft, myId: meRef.current, myAnswer, buzz, answer };
 }
